@@ -20,3 +20,8 @@ dependencies = [
     "statsmodels>=0.14.6",
     "zepid>=0.9.1",
 ]
+
+[dependency-groups]
+dev = [
+    "black>=26.5.1",
+]
