@@ -58,13 +58,23 @@ def fit_propensity_scikit(
     """
 
     df = df.copy()
-    clf = LogisticRegression(random_state=0, penalty=None, C=np.inf).fit(df[covariates], df[treatment])
-    weights = pd.DataFrame(1 / clf.predict_proba(df[covariates]), index=df.index)
+    clf = LogisticRegression(random_state=0, C=np.inf).fit(df[covariates], df[treatment])
+    df["ps_score"] =  clf.predict_proba(df[covariates])[:,1]
+    # weights = pd.DataFrame(1 / df.ps_score, index=df.index)
     # treated = df[treatment] == 1
     # np.repeat(0, df.shape[0])
     # df["weights_1"] = np.repeat(0.0, df.shape[0])
     # df.loc[treated, "weights_1"] = weights.loc[treated, 1]
     # df.loc[~treated, "weights_1"] = weights.loc[~treated, 0]
-    df["weights_1"] = np.where(df[treatment] == 1, weights[1], weights[0])
+    df["weights_1"] = np.where(df[treatment] == 1, 1 / df.ps_score, 1/(1-df.ps_score))
+    df["stabilized_weights"] = np.where(df[treatment] == 1,  df[treatment].mean()*df.weights_1,  
+                                        (1-df[treatment].mean())*df.weights_1)
+    # df["truncated_weights"] = np.where(df.weights_1 > np.quantile(df.weights_1, 0.95), 
+    #                                   np.quantile(df.weights_1, 0.95), df.weights_1)
+    # df["truncated_stab_weights"] = np.where(df.stabilized_weights > np.quantile(df.stabilized_weights, 0.95), 
+    #                                        np.quantile(df.stabilized_weights, 0.95), df.stabilized_weights)
+    df["truncated_weights"] = np.clip(df.weights_1, a_min=0, a_max = np.quantile(df.weights_1, 0.975))
+    df["truncated_stab_weights"] = np.clip(df.stabilized_weights, a_min=0, a_max = np.quantile(df.stabilized_weights, 0.975))
 
+    
     return df
